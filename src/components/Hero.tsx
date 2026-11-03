@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { ParticleField } from "./ParticleField";
 import { TypewriterText } from "./TypewriterText";
 import { ErrorBoundary } from "./ErrorBoundary";
+import { getEnvironmentBytes } from "./environmentAsset";
 
 const loadBackground3D = () => import("./Background3D").then(({ Background3D: Component }) => ({ default: Component }));
 const Background3D = lazy(loadBackground3D);
@@ -32,28 +33,19 @@ export function Hero() {
     ) return;
 
     let cancelled = false;
-    const loadBackground = () => {
-      void loadBackground3D()
-        .then(() => {
-          if (!cancelled) setShouldLoad3D(true);
-        })
-        .catch(() => {
-          // The static hero remains fully usable if WebGL cannot be loaded.
-        });
-    };
+    // Start the environment download alongside the 3D code, rather than
+    // waiting for the renderer to mount before requesting it.
+    void getEnvironmentBytes().catch(() => {});
+    void loadBackground3D()
+      .then(() => {
+        if (!cancelled) setShouldLoad3D(true);
+      })
+      .catch(() => {
+        // The static hero remains fully usable if WebGL cannot be loaded.
+      });
 
-    if ("requestIdleCallback" in window) {
-      const idleId = window.requestIdleCallback(loadBackground, { timeout: 800 });
-      return () => {
-        cancelled = true;
-        window.cancelIdleCallback(idleId);
-      };
-    }
-
-    const timeoutId = globalThis.setTimeout(loadBackground, 400);
     return () => {
       cancelled = true;
-      globalThis.clearTimeout(timeoutId);
     };
   }, []);
 

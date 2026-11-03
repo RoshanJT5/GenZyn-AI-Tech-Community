@@ -37,17 +37,24 @@ export function ParticleField() {
       [225, 6, 0],
     ];
     const count = canvas.offsetWidth < 700 ? 80 : 135;
-    const particles = Array.from({ length: count }, () => ({
-      x: Math.random() * canvas.offsetWidth,
-      y: Math.random() * canvas.offsetHeight,
-      vx: prefersReducedMotion ? 0 : (Math.random() - 0.5) * 0.42,
-      vy: prefersReducedMotion ? 0 : (Math.random() - 0.5) * 0.42,
-      r: Math.random() * 2 + 0.8,
-      alpha: Math.random() * 0.32 + 0.5,
-      phase: Math.random() * Math.PI * 2,
-      pulseSpeed: Math.random() * 1.2 + 0.65,
-      color: particleColors[Math.floor(Math.random() * particleColors.length)],
-    }));
+    const particles = Array.from({ length: count }, () => {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = prefersReducedMotion ? 0 : Math.random() * 0.5 + 0.42;
+
+      return {
+        x: Math.random() * canvas.offsetWidth,
+        y: Math.random() * canvas.offsetHeight,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        speed,
+        turnRate: prefersReducedMotion ? 0 : (Math.random() - 0.5) * 0.008,
+        r: Math.random() * 2 + 0.8,
+        alpha: Math.random() * 0.32 + 0.5,
+        phase: Math.random() * Math.PI * 2,
+        pulseSpeed: Math.random() * 1.2 + 0.65,
+        color: particleColors[Math.floor(Math.random() * particleColors.length)],
+      };
+    });
 
     const draw = (timestamp: number) => {
       if (!isRunning) return;
@@ -61,10 +68,26 @@ export function ParticleField() {
 
       for (const p of particles) {
         if (!prefersReducedMotion) {
+          // Rotate each particle's velocity by its own slowly changing amount.
+          // This creates visible, individual curved paths without abrupt jumps.
+          const wander = p.turnRate
+            + Math.sin(timestamp * 0.00045 * p.pulseSpeed + p.phase) * 0.0022;
+          const cos = Math.cos(wander);
+          const sin = Math.sin(wander);
+          const nextVx = p.vx * cos - p.vy * sin;
+          p.vy = p.vx * sin + p.vy * cos;
+          p.vx = nextVx;
+
           p.x += p.vx;
           p.y += p.vy;
-          if (p.x < 0 || p.x > w) p.vx *= -1;
-          if (p.y < 0 || p.y > h) p.vy *= -1;
+          if (p.x < 0 || p.x > w) {
+            p.x = Math.max(0, Math.min(w, p.x));
+            p.vx *= -1;
+          }
+          if (p.y < 0 || p.y > h) {
+            p.y = Math.max(0, Math.min(h, p.y));
+            p.vy *= -1;
+          }
         }
 
         // Mouse attraction
@@ -72,8 +95,16 @@ export function ParticleField() {
         const dy = mouse.y - p.y;
         const distanceSquared = dx * dx + dy * dy;
         if (!prefersReducedMotion && distanceSquared < 200 * 200) {
-          p.vx += dx * 0.00005;
-          p.vy += dy * 0.00005;
+          p.vx += dx * 0.000035;
+          p.vy += dy * 0.000035;
+
+          const currentSpeed = Math.hypot(p.vx, p.vy);
+          const maximumSpeed = p.speed * 1.8;
+          if (currentSpeed > maximumSpeed) {
+            const speedScale = maximumSpeed / currentSpeed;
+            p.vx *= speedScale;
+            p.vy *= speedScale;
+          }
         }
 
         const pulse = prefersReducedMotion

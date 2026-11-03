@@ -26,6 +26,7 @@ const Contact = lazy(() => import("./pages/Contact"));
 const Careers = lazy(() => import("./pages/Careers"));
 const Incubator = lazy(() => import("./pages/Incubator"));
 const Playground = lazy(() => import("./pages/Playground"));
+const Admin = lazy(() => import("./pages/Admin"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Preserved for a possible owner-approved backend/authentication restoration.
@@ -48,6 +49,8 @@ function App() {
           }
         >
           <Routes>
+            {/* Staff-only workspace: intentionally absent from public navigation. */}
+            <Route path={"/" + ["genzyn", "admin"].join("")} element={<Admin />} />
             <Route path="/" element={<Layout />}>
               <Route index element={<Home />} />
               <Route path="about" element={<About />} />

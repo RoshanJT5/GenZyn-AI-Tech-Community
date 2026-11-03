@@ -3,51 +3,12 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { Icosahedron, MeshDistortMaterial, Environment } from '@react-three/drei';
 import * as THREE from 'three';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
-
-const CITY_ENVIRONMENT_URL =
-  'https://raw.githack.com/pmndrs/drei-assets/456060a26bbeb8fdf79326f224b6d99b8bcce736/hdri/potsdamer_platz_1k.hdr';
-const ENVIRONMENT_CACHE_NAME = 'genzyn-3d-environment-v1';
+import { getEnvironmentBytes } from './environmentAsset';
 
 let environmentTexturePromise: Promise<THREE.DataTexture> | null = null;
 
-async function getEnvironmentResponse() {
-  let assetCache: Cache | null = null;
-
-  if ('caches' in window) {
-    try {
-      assetCache = await window.caches.open(ENVIRONMENT_CACHE_NAME);
-      const cachedResponse = await assetCache.match(CITY_ENVIRONMENT_URL);
-      if (cachedResponse) return cachedResponse;
-    } catch {
-      // Private browsing modes may disable Cache Storage. The HTTP cache remains
-      // available through the force-cache request below.
-    }
-  }
-
-  const response = await fetch(CITY_ENVIRONMENT_URL, {
-    cache: 'force-cache',
-    mode: 'cors',
-  });
-
-  if (!response.ok) {
-    throw new Error(`Unable to load the city environment map (${response.status})`);
-  }
-
-  if (assetCache) {
-    try {
-      await assetCache.put(CITY_ENVIRONMENT_URL, response.clone());
-    } catch {
-      // Rendering can continue using the in-memory texture if persistent cache
-      // writes are unavailable or the browser is out of storage quota.
-    }
-  }
-
-  return response;
-}
-
 async function loadEnvironmentTexture() {
-  const response = await getEnvironmentResponse();
-  const parsed = new RGBELoader().parse(await response.arrayBuffer());
+  const parsed = new RGBELoader().parse(await getEnvironmentBytes());
   const texture = new THREE.DataTexture(
     parsed.data,
     parsed.width,
